@@ -6,7 +6,7 @@ import requests
 from datetime import datetime
 
 # Initialize the sensors
-dht_device = adafruit_dht.DHT22(board.D17)  # DHT22 on GPIO 17
+dht_device = adafruit_dht.DHT22(board.D22)  # DHT22 on GPIO 17
 ds18b20_sensor = W1ThermSensor()
 
 # Terrarium ID

@@ -19,7 +19,7 @@ pwm.ChangeDutyCycle(0)  # Odwrócona logika: 0 = 100% mocy
 sensor = W1ThermSensor()
 
 # Ścieżka do pliku CSV
-csv_file = "temperature_100_percent_power2.csv"
+csv_file = "temperature_100_percent_power3.csv"
 
 # Inicjalizacja pliku CSV
 with open(csv_file, mode='w', newline='') as file:

@@ -7,11 +7,12 @@ from datetime import datetime
 
 # Klasa TerrariumLamp
 class TerrariumLamp:
-    def __init__(self, terrarium_id, dht22_t1=None, dht11_t2=None, ds18b20=None):
+    def __init__(self, terrarium_id, dht22_t1=None, dht11_t2=None, ds18b20=None, pwm_pin=None):
         self.terrarium_id = terrarium_id
         self.dht22_t1 = dht22_t1
         self.dht11_t2 = dht11_t2
         self.ds18b20 = ds18b20
+        self.pwm_pin = pwm_pin
         self.hourly_data = []  # Lista przechowująca dane do statystyk
 
     def get_dht22_readings(self):
@@ -137,6 +138,7 @@ def lamp_pin_setup(terrarium_id):
     dht22_sensor = None
     dht11_sensor = None
     ds18b20_sensor = None
+    pwm_pin = None
 
     for pin in pins:
         if pin["terrarium_id"] == terrarium_id:
@@ -158,12 +160,18 @@ def lamp_pin_setup(terrarium_id):
                     ds18b20_sensor = W1ThermSensor(sensor_id=function)
                 except Exception as e:
                     print(f"Error initializing DS18B20: {e}")
+            elif function == "pwm":
+                try:
+                    pwm_pin = pin['id']
+                except Exception as e:
+                    print("Error initalizing pwm pin")
 
     return TerrariumLamp(
         terrarium_id=terrarium_id,
         dht22_t1=dht22_sensor,
         dht11_t2=dht11_sensor,
-        ds18b20=ds18b20_sensor
+        ds18b20=ds18b20_sensor,
+        pwm_pin = pwm_pin
     )
 
 # Główna funkcja
@@ -175,7 +183,7 @@ if __name__ == "__main__":
     current_hour = datetime.now().hour
 
     for terrarium in terrariums:
-        if terrarium["name"].lower() == "lampa":
+        if terrarium["type"].lower() == "lampa":
             lamp_terrariums.append(lamp_pin_setup(terrarium["id"]))
 
     try:
