@@ -59,14 +59,14 @@ pwm.start(100)
 sensor = W1ThermSensor()
 
 # Parametry systemu i regulatora
-T = 800.0  # Stała czasowa procesu
-L = 100.0  # Czas opóźnienia procesu
-setpoint = 28.0  # Zadana temperatura
+T = 900.0  # Stała czasowa procesu
+L = 85.0  # Czas opóźnienia procesu
+setpoint = 29.0  # Zadana temperatura
 
 pi_controller = PIController(T, L)
 
 # Plik CSV do zapisu danych
-csv_file = "pi_temperature_log22_12_3.csv"
+csv_file = "pi_temperature_log22_12_T900L85.csv"
 initialize_csv(csv_file)
 
 start_time = time.time()  # Czas początkowy programu
@@ -98,7 +98,7 @@ try:
             # Zapis do pliku CSV
             save_to_csv(csv_file, elapsed_time, current_temperature, error, pi_output, P, I)
 
-        time.sleep(1)  # Odstęp czasu między iteracjami
+        time.sleep(5)  # Odstęp czasu między iteracjami
 
 except KeyboardInterrupt:
     print("\nStopping...")

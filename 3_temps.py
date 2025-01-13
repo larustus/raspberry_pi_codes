@@ -4,6 +4,35 @@ import adafruit_dht
 from w1thermsensor import W1ThermSensor
 import time
 from datetime import datetime
+import RPi.GPIO as GPIO
+
+class PIController:
+    def __init__(self, T, L):
+        # Obliczanie parametrów według tabeli
+        self.Kp = 0.9 * T / L
+        self.Ti = L / 0.3
+        self.integral = 0.0
+        self.previous_time = None
+
+    def compute(self, setpoint, measured_value):
+        current_time = time.time()
+        error = setpoint - measured_value
+
+        # Obliczenie całki (integral) z uchybu
+        if self.previous_time is not None:
+            dt = current_time - self.previous_time
+            self.integral += error * dt
+        else:
+            dt = 0
+
+        # Składowe regulatora PI
+        P = self.Kp * error
+        I = (self.Kp / self.Ti) * self.integral
+        output = P + I
+
+        self.previous_time = current_time
+
+        return max(0, min(100, output)), error, P, I
 
 # Klasa TerrariumLamp
 class TerrariumLamp:
@@ -163,6 +192,10 @@ def lamp_pin_setup(terrarium_id):
             elif function == "pwm":
                 try:
                     pwm_pin = pin['id']
+                    GPIO.setmode(GPIO.BCM)
+                    GPIO.setup(pwm_pin, GPIO.OUT)
+                    pwm = GPIO.PWM(pwm_pin, 100)
+                    pwm.start(100)
                 except Exception as e:
                     print("Error initalizing pwm pin")
 
@@ -171,11 +204,15 @@ def lamp_pin_setup(terrarium_id):
         dht22_t1=dht22_sensor,
         dht11_t2=dht11_sensor,
         ds18b20=ds18b20_sensor,
-        pwm_pin = pwm_pin
+        pwm_pin = pwm
     )
 
 # Główna funkcja
 if __name__ == "__main__":
+    T = 750.0  # Stała czasowa procesu
+    L = 64.0  # Czas opóźnienia procesu
+    setpoint = 34.0  # Zadana temperatura
+    pi_controller = PIController(T, L)
     user_id = 1
     lamp_terrariums = []
     terrariums = fetch_terrariums(user_id)
@@ -185,10 +222,26 @@ if __name__ == "__main__":
     for terrarium in terrariums:
         if terrarium["type"].lower() == "lampa":
             lamp_terrariums.append(lamp_pin_setup(terrarium["id"]))
-
+    start_time = time.time()
     try:
         while True:
             for lamp in lamp_terrariums:
+                try:
+                    current_temperature = lamp.ds18b20.get_temperature()
+                except Exception as e:
+                    print(f"Error reading temperature: {e}")
+                    current_temperature = None
+                if current_temperature is not None:
+                    pi_output, error, P, I = pi_controller.compute(setpoint, current_temperature)
+                    
+                    # Odwrócona logika PWM
+                    inverted_pwm = 100 - pi_output  # Invert the duty cycle
+                    lamp.pwm_pin.ChangeDutyCycle(inverted_pwm)
+
+                    elapsed_time = time.time() - start_time
+                    print(f"Time: {elapsed_time:.1f}s, Temp: {current_temperature:.2f}°C, Error: {error:.2f}, "
+                  f"PI Output: {pi_output:.2f}%, PWM: {inverted_pwm:.2f}%, P: {P:.2f}, I: {I:.2f}")
+
                 dht22_temp, dht22_humidity = lamp.get_dht22_readings()
                 dht11_temp, dht11_humidity = lamp.get_dht11_readings()
                 lamp.record_hourly_reading(dht22_temp, dht11_temp, dht11_humidity)
@@ -200,6 +253,6 @@ if __name__ == "__main__":
                     lamp.calculate_and_send_hourly_stats(stats_api_url)
                 current_hour = new_hour
 
-            time.sleep(30)
+            time.sleep(5)
     except KeyboardInterrupt:
         print("Program zatrzymany.")
